@@ -1,8 +1,7 @@
-numpy
-opencv-python
-matplotlib
-scikit-learn
-scikit-image
 torch
 torchvision
+numpy
+matplotlib
+opencv-python
+scikit-learn
 tqdm
