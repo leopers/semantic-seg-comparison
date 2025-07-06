@@ -1,14 +1,23 @@
+import os
+import numpy as np
+import cv2
 import torch
 from torch.utils.data import Dataset
 from torchvision.datasets import OxfordIIITPet
 from torchvision import transforms as T
 from torchvision.transforms import InterpolationMode
-from PIL import Image
-import numpy as np
-import cv2
 
 
 class OxfordPetsSegmentation(Dataset):
+    """
+    Binary semantic segmentation dataset for Oxford-IIIT Pet.
+
+    - Downloads the dataset if missing
+    - Resizes all images and masks to (image_size × image_size)
+    - Converts trimap mask into binary mask (pet=1, background=0)
+    - Supports 'train' and 'val' split (80/20)
+    """
+
     def __init__(self, root, split="train", image_size=128):
         self.root = root
         self.image_size = image_size
