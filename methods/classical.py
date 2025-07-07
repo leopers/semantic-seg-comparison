@@ -75,7 +75,7 @@ def process_sample(index, dataset, output_dir, pad):
 
     mask_pred = segment_with_grabcut(img_bgr, mask_gt, pad=pad)
 
-    out_path = os.path.join(output_dir, f"mask_{index}.png")
+    out_path = os.path.join(output_dir, f"{index}.png")
     save_mask(mask_pred, out_path)
 
 
