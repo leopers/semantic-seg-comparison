@@ -9,7 +9,7 @@ from datasets.oxford_pets import OxfordPetsSegmentation
 # Grabcut Pipeline
 
 
-def get_bbox_from_mask(mask: np.ndarray, pad: int = 10):
+def get_bbox_from_mask(mask, pad=10):
     """Compute a padded bounding box from a binary GT mask."""
     ys, xs = np.where(mask)
     height, width = mask.shape
@@ -30,7 +30,7 @@ def get_bbox_from_mask(mask: np.ndarray, pad: int = 10):
     return (x0b, y0b, x1b - x0b, y1b - y0b)
 
 
-def run_grabcut(img_bgr: np.ndarray, rect: tuple, iterations: int = 5):
+def run_grabcut(img_bgr, rect, iterations=5):
     """Run OpenCV GrabCut using a bounding box."""
     mask = np.zeros(img_bgr.shape[:2], dtype=np.uint8)
     bgd = np.zeros((1, 65), np.float64)
@@ -44,7 +44,7 @@ def run_grabcut(img_bgr: np.ndarray, rect: tuple, iterations: int = 5):
     return result.astype(np.uint8)
 
 
-def clean_mask(mask: np.ndarray, kernel_size: int = 3):
+def clean_mask(mask, kernel_size=3):
     """Apply morphological open+close to reduce noise."""
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     m = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
@@ -52,7 +52,7 @@ def clean_mask(mask: np.ndarray, kernel_size: int = 3):
     return m
 
 
-def segment_with_grabcut(img_bgr: np.ndarray, mask_gt: np.ndarray, pad: int = 10):
+def segment_with_grabcut(img_bgr, mask_gt, pad=10):
     """Full pipeline: bounding box; grabcut; cleanup."""
     rect = get_bbox_from_mask(mask_gt, pad)
     raw = run_grabcut(img_bgr, rect)
@@ -62,14 +62,12 @@ def segment_with_grabcut(img_bgr: np.ndarray, mask_gt: np.ndarray, pad: int = 10
 # Scripting
 
 
-def save_mask(mask: np.ndarray, path: str):
+def save_mask(mask, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     cv2.imwrite(path, (mask * 255).astype(np.uint8))
 
 
-def process_sample(
-    index: int, dataset: OxfordPetsSegmentation, output_dir: str, pad: int
-):
+def process_sample(index, dataset, output_dir, pad):
     img_t, mask_t = dataset[index]
     img = (img_t.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
     img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
