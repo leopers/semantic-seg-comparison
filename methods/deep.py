@@ -1,8 +1,4 @@
-import os
-import sys
 import argparse
-import numpy as np
-import cv2
 import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
@@ -15,20 +11,35 @@ from models.unet import UNet
 
 # U-net pipeline
 
-def train_cnn(dataset: OxfordPetsSegmentation, batch_size: int = 32, num_epochs: int = 10, plot_loss: bool = True):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def train_cnn(
+    dataset: OxfordPetsSegmentation,
+    batch_size: int = 32,
+    num_epochs: int = 50,
+    plot_loss: bool = True,
+):
+    """Trains the implemented model on the Oxford Pets dataset."""
+
+    # Selecting GPU acceleration if available
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
     model = UNet().to(device)
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     epoch_losses = []
 
     model.train()
     for epoch in range(num_epochs):
         running_loss = 0.0
-        progress_bar = tqdm(dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}", leave=False)
+        progress_bar = tqdm(
+            dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}", leave=False
+        )
 
         for images, masks in progress_bar:
             images = images.to(device)
@@ -49,15 +60,16 @@ def train_cnn(dataset: OxfordPetsSegmentation, batch_size: int = 32, num_epochs:
         epoch_losses.append(epoch_loss)
         print(f"Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f}")
 
-    torch.save(model.state_dict(), "../models/unet_oxfordpets.pth")
+    torch.save(model.state_dict(), "../models/trained/unet_oxfordpets.pth")
 
     if plot_loss:
-        plt.plot(range(1, len(epoch_losses) + 1), epoch_losses, marker='o')
+        plt.plot(range(1, len(epoch_losses) + 1), epoch_losses, marker="o")
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
         plt.title("Training Loss per Epoch")
         plt.grid(True)
         plt.show()
+
 
 def main():
     parser = argparse.ArgumentParser(description="Run Unet on OxfordPets")
@@ -71,7 +83,9 @@ def main():
     args = parser.parse_args()
 
     if args.train:
-        train_dataset = OxfordPetsSegmentation(args.dataset_root, split="train", image_size=args.image_size)
+        train_dataset = OxfordPetsSegmentation(
+            args.dataset_root, split="train", image_size=args.image_size
+        )
         train_cnn(train_dataset)
 
     # ds = OxfordPetsSegmentation(
