@@ -2,6 +2,7 @@ import os
 import argparse
 import numpy as np
 import cv2
+from tqdm import tqdm
 
 from datasets.oxford_pets import OxfordPetsSegmentation
 
@@ -76,9 +77,8 @@ def process_sample(
 
     mask_pred = segment_with_grabcut(img_bgr, mask_gt, pad=pad)
 
-    out_path = os.path.join(output_dir, f"mask_{index:04d}.png")
+    out_path = os.path.join(output_dir, f"mask_{index}.png")
     save_mask(mask_pred, out_path)
-    print(f"[{index:04d}] saved on {out_path}")
 
 
 def main():
@@ -92,7 +92,7 @@ def main():
     ds = OxfordPetsSegmentation(root=args.dataset_root, split="val", image_size=128)
 
     if args.all:
-        for i in range(len(ds)):
+        for i in tqdm(range(len(ds)), desc="GrabCut"):
             process_sample(i, ds, args.output_dir, 10)
     else:
         process_sample(args.index, ds, args.output_dir, 10)
