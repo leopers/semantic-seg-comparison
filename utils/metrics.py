@@ -1,6 +1,3 @@
-import torch
-
-
 def pixel_accuracy(preds, masks):
     """Calculate pixel accuracy (percentage of correct pixels)"""
     correct = (preds == masks).float().sum()

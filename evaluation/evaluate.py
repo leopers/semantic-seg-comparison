@@ -71,7 +71,6 @@ def classical_metrics(
     plt.savefig(os.path.join(output_dir, "histogram_accuracy.pdf"))
     plt.close()
 
-    # Histogram IoU
     plt.figure()
     plt.hist(classical_iou, bins=20, color="red", edgecolor="black")
     plt.title("Histogram of IoU")
