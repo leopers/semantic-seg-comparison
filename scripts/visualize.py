@@ -37,7 +37,7 @@ def overlay_mask(image, mask, color=(255, 0, 0), alpha=0.5):
 
 # Plotting
 
-row_titles = ["Original", "Ground Truth", "U-Net", "GrabCut"]
+row_titles = ["Original", "Ground Truth", "Network", "GrabCut"]
 fig, axes = plt.subplots(nrows=4, ncols=2, figsize=(8, 10))
 fig.subplots_adjust(hspace=0.3, wspace=0.05, top=0.95)
 
@@ -70,5 +70,5 @@ for col_idx, idx in enumerate(indices):
 
 # Save result
 os.makedirs("outputs/visualize", exist_ok=True)
-plt.savefig("outputs/visualize/visualize.png", dpi=300)
+plt.savefig("outputs/visualize/visualize.pdf", dpi=300)
 plt.show()
