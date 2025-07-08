@@ -1,0 +1,263 @@
+\documentclass[journal]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{booktabs} 
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage[brazil]{babel}
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+
+
+\begin{document}
+
+\title{Estudo Comparativo entre Abordagens Clássicas e Arquiteturas Encoder-Decoder para Segmentação Semântica de Imagens}
+\author{Leonardo~Peres~Dias,~Marcos~Levi~Pinto~Sousa \\ Divisão de Engenharia de Computação\\ Instituto Tecnológico de Aeronáutica 
+}
+
+\markboth{Projeto de Exame - CT-213}%
+{}
+
+\maketitle
+
+\begin{abstract}
+Este trabalho apresenta um estudo comparativo entre duas abordagens distintas para segmentação semântica binária de imagens: uma técnica clássica baseada no algoritmo GrabCut e uma abordagem moderna utilizando uma arquitetura de rede neural convolucional do tipo encoder-decoder baseada na U-net. Ambas as soluções foram aplicadas ao Oxford-IIIT Pet Dataset, visando a separação entre o animal de estimação e o plano de fundo. A rede neural foi implementada do zero utilizando PyTorch, com um foco em leveza e viabilidade de treinamento em hardware limitado. A avaliação quantitativa considerou métricas como precisão pixel a pixel (Pixel Accuracy) e Interseção sobre União (IoU), enquanto a análise qualitativa foi conduzida por inspeção visual dos resultados. Os experimentos demonstram as diferenças de desempenho entre abordagens clássicas baseadas em técnicas de visão computacional tradicional e modelos de aprendizado profundo, destacando os pontos fortes e limitações de cada método.
+\end{abstract}
+
+\IEEEpeerreviewmaketitle
+
+\section{Introdução}
+
+\IEEEPARstart{A} segmentação de imagens é uma tarefa fundamental em visão computacional, com aplicações em áreas como reconhecimento de objetos, análise médica, veículos autônomos e robótica. Em termos gerais, segmentar uma imagem consiste em atribuir um rótulo a cada pixel, distinguindo regiões de interesse (por exemplo, objetos) do fundo ou de outras classes.
+
+Historicamente, algoritmos clássicos como o GrabCut, baseados em técnicas de processamento de imagem e otimização de energia, foram amplamente utilizados devido à sua eficiência e facilidade de implementação. No entanto, com os avanços recentes em aprendizado profundo, arquiteturas de redes neurais convolucionais como a U-Net têm se destacado por sua alta capacidade de generalização e precisão em tarefas de segmentação, mesmo com conjuntos de dados relativamente pequenos.
+
+Este trabalho propõe um estudo comparativo entre essas duas abordagens: uma clássica (GrabCut) e outra baseada em aprendizado profundo (arquitetura do tipo Encoder-Decoder), ambas aplicadas à tarefa de segmentação binária do Oxford-IIIT Pet Dataset. O objetivo é avaliar o desempenho relativo de cada método, tanto do ponto de vista quantitativo, utilizando métricas como Interseção sobre União (IoU) e acurácia pixel a pixel, quanto qualitativo, através da análise visual dos resultados. Além disso, discute-se a viabilidade computacional de cada abordagem em ambientes com recursos limitados, como notebooks com GPUs integradas.
+
+\section{Fundamentação Teórica}
+
+\subsection{Algoritmo Grabcut}
+O \textit{GrabCut} é um algoritmo de segmentação de imagem baseado em energia, proposto por Rother et al. (2015)\cite{10.1145/1186562.1015720}, que visa separar o objeto do fundo utilizando um modelo probabilístico e minimização iterativa de energia. Diferentemente de abordagens que exigem rótulos completos de segmentação, o GrabCut requer apenas uma delimitação aproximada do objeto, geralmente uma caixa delimitadora (bounding box).
+
+\subsubsection{Modelagem de Cor com Misturas de Gaussianas}
+
+A imagem $\mathbf{z}$ é representada como um conjunto de pixels em um espaço de cor (por exemplo, RGB). Cada pixel pertence ao fundo ou ao primeiro plano, denotado por $\alpha_n \in \{0, 1\}$, e é modelado por uma mistura de Gaussianas (GMM) com $K$ componentes. A variável latente $k_n$ indica a componente gaussiana atribuída ao pixel $n$.
+
+A energia total a ser minimizada é dada por:
+\begin{equation}
+E(\boldsymbol{\alpha}, \mathbf{k}, \boldsymbol{\theta}, \mathbf{z}) = U(\boldsymbol{\alpha}, \mathbf{k}, \boldsymbol{\theta}, \mathbf{z}) + V(\boldsymbol{\alpha}, \mathbf{z}),
+\end{equation}
+onde $U$ representa o termo de dados (data term) e $V$ é o termo de suavidade (smoothness).
+
+O termo de dados modela a verossimilhança dos pixels segundo os GMMs:
+\begin{equation}
+U(\boldsymbol{\alpha}, \mathbf{k}, \boldsymbol{\theta}, \mathbf{z}) = \sum_{n} D(\alpha_n, k_n, \boldsymbol{\theta}, z_n),
+\end{equation}
+com
+\begin{align}
+D(\alpha_n, k_n, \boldsymbol{\theta}, z_n) 
+= & -\log \pi(\alpha_n, k_n) 
++ \frac{1}{2} \log |\Sigma_{\alpha_n, k_n}| \nonumber \\
+& + \frac{1}{2} (z_n - \mu_{\alpha_n, k_n})^\top 
+\Sigma_{\alpha_n, k_n}^{-1} (z_n - \mu_{\alpha_n, k_n})
+\end{align}
+onde $\pi(\alpha_n, k_n)$ é o peso da componente $k_n$ do modelo de mistura, e $\mu$ e $\Sigma$ são a média e covariância dos GMMs.
+
+O termo de suavidade penaliza descontinuidades entre pixels vizinhos:
+\begin{equation}
+V(\boldsymbol{\alpha}, \mathbf{z}) = \gamma \sum_{(m,n) \in \mathcal{C}} [\alpha_m \neq \alpha_n] \exp\left( -\beta \| z_m - z_n \|^2 \right),
+\end{equation}
+onde $\mathcal{C}$ representa o conjunto de vizinhanças e $\gamma$ e $\beta$ são parâmetros de penalização.
+
+\subsubsection{Minimização Iterativa de Energia}
+
+O algoritmo procede de forma iterativa:
+\begin{enumerate}
+    \item Inicializa-se $\boldsymbol{\alpha}$ com base em uma \textit{bounding box}, assumindo $\alpha_n = 1$ (objeto) dentro e $\alpha_n = 0$ (fundo) fora da caixa.
+    \item Atribui-se a cada pixel $n$ uma componente gaussiana $k_n$ que minimiza $D(\cdot)$.
+    \item Estimam-se os parâmetros $\boldsymbol{\theta} = \{ \pi, \mu, \Sigma \}$ dos GMMs.
+    \item Atualiza-se $\boldsymbol{\alpha}$ via mincut usando o algoritmo de fluxo máximo.
+    \item Repete-se até convergência.
+\end{enumerate}
+
+\subsection{Arquitetura Encoder-Decoder e U-Net}
+
+A arquitetura \textit{encoder-decoder} é amplamente utilizada em tarefas de visão computacional que exigem transformação densa de imagem para imagem. Essa estrutura consiste em duas partes principais:
+
+\begin{itemize}
+    \item \textbf{Encoder}: envolve camadas convolucionais seguidas de operações de redução espacial, como \textit{max pooling}.
+    
+    \item \textbf{Decoder}: reconstrói a saída a partir da representação reduzida, aplicando operações de \textit{upsampling} e camadas convolucionais, com o objetivo de recuperar a resolução espacial original.
+\end{itemize}
+
+A arquitetura \textbf{U-Net}, proposta por Ronneberger et al. (2015) \cite{DBLP:journals/corr/RonnebergerFB15}, é uma variação eficiente do modelo \textit{encoder-decoder} voltada para segmentação biomédica, mas que se mostrou eficaz em diversas tarefas de segmentação semântica.
+
+\subsubsection{Estrutura da U-Net}
+
+A U-Net se diferencia por apresentar \textit{skip-connections} entre o encoder e o decoder. Essas conexões transferem diretamente os mapas de ativação de cada etapa de codificação para o estágio correspondente no decodificador. Com isso, informações perdidas no processo de downsampling são recuperadas e combinadas com a reconstrução no decoder. Essa característica é fundamental para obter contornos mais precisos na segmentação.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figures/unet.png}
+    \caption{Arquitetura da U-Net originalmente proposta.}
+    \label{fig:unet_arch}
+\end{figure}
+
+\subsubsection{Saída da U-Net}
+
+A camada final da U-Net geralmente é uma convolução $1 \times 1$ com ativação sigmoide (para segmentação binária), resultando em um mapa de probabilidade $P(y=1 \mid \mathbf{x}) \in [0, 1]$ para cada pixel. A função de perda comumente utilizada é a \textit{Binary Cross-Entropy} (BCE), definida como:
+
+\begin{equation}
+\mathcal{L}_{\text{BCE}} = -\frac{1}{N} \sum_{i=1}^{N} \left[
+    y_i \log(\hat{y}_i) + (1 - y_i) \log(1 - \hat{y}_i)
+\right],
+\end{equation}
+
+onde $y_i$ representa o valor real do pixel (0 ou 1), e $\hat{y}_i$ a predição da rede.
+
+\section{Metodologia}
+
+\subsection{Dataset}
+
+O \textit{dataset} utilizado é o \textbf{Oxford-IIIT Pet Dataset}, composto por 37 classes de animais de estimação com anotações de segmentação. Foi adotada uma divisão estratificada de $80\%$ das imagens para treino e $20\%$ para validação. Todas as imagens e máscaras foram redimensionadas para $128 \times 128$ pixels para viabilizar o treinamento em hardware limitado.
+
+\subsection{Segmentação Clássica com GrabCut}
+
+A abordagem clássica foi implementada utilizando a função \texttt{cv2.grabCut()} da biblioteca OpenCV \cite{opencv_library}, em conjunto com as anotações do \textit{dataset} para guiar a inicialização do algoritmo.
+
+Inicialmente, a máscara binária de cada imagem de validação foi utilizada para computar uma \textit{bounding box} com um \textit{padding} de 10 pixels em todas as direções. Esta caixa define a região inicial a ser segmentada, sem fornecer ao algoritmo informação direta sobre os rótulos dos pixels.
+
+O algoritmo GrabCut foi então executado no espaço de cor RGB
+por 5 iterações, usando essa caixa como entrada. O resultado da segmentação, que consiste em uma máscara binária, foi posteriormente refinado com operações morfológicas de \textbf{abertura e fechamento} (usando um kernel quadrado $3 \times 3$), com o objetivo de reduzir ruídos e pequenas imperfeições na borda dos objetos segmentados. Ao final, as máscaras finais foram salvas em formato PNG em tons de cinza.
+
+\subsection{Segmentação com Arquitetura Encoder-Decoder}
+
+A segmentação baseada em aprendizado profundo foi implementada utilizando um modelo leve baseado na arquitetura da U-Net. A rede foi construída do zero com o \texttt{PyTorch}, empregando convoluções $3 \times 3$ com padding unitário, camadas de \texttt{MaxPooling} e \texttt{ConvTranspose2d} para redução e aumento da resolução espacial, respectivamente.
+
+O encoder é composto por três blocos de convoluções seguidas de downsampling, com canais de ativação crescentes: 16, 32 e 64. O decoder reconstrói a máscara segmentada por meio de dois blocos de upsampling, com canais decrescentes: 32 e 16. \textit{Skip-connections} foram implementadas concatenando as ativações do encoder com as correspondentes no decoder.
+
+O modelo foi treinado com imagens RGB e máscaras binárias de tamanho $128 \times 128$, utilizando função de perda Binary Cross-Entropy (BCE) e otimizador Adam com taxa de aprendizado $10^{-3}$. O treinamento foi realizado por 20 épocas com batch de tamanho 8 e com divisão de 80\% para treino e 20\% para validação. Durante o processo, foram monitoradas as métricas de acurácia por pixel, IoU (Intersection over Union) e as perdas nos conjuntos de treino e validação. Ao final, as máscaras preditas foram salvas em tons de cinza, com pós-processamento binário aplicando um limiar fixo de 0.5 à saída sigmoide.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.3\textwidth]{figures/unet.pdf}
+    \caption{Arquitetura Encoder-Decoder implementada.}
+    \label{fig:unet_arch}
+\end{figure}
+
+\subsection{Método de Avaliação}
+
+Para garantir uma comparação justa entre as abordagens, tanto o algoritmo clássico quanto a rede foram avaliados sobre o mesmo subconjunto de validação.
+
+As métricas utilizadas foram:
+
+\begin{itemize}
+    \item \textbf{Acurácia por pixel (Pixel Accuracy)}.
+    \item \textbf{Intersection over Union (IoU)}.
+\end{itemize}
+
+Além das médias e desvios padrão de cada métrica, foram gerados histogramas das distribuições para uma análise mais abrangente do desempenho dos modelos sobre as diferentes amostras.
+
+\section{Resultados e Discussões}
+
+Durante o treinamento da rede implementada, observou-se uma melhoria progressiva das métricas de desempenho ao longo das 20 épocas.
+
+As curvas de acurácia e IoU (Figuras~\ref{fig:accuracy_training} e~\ref{fig:iou_training}) revelam crescimento consistente tanto no conjunto de treinamento quanto no de teste. O que revela que, além de apresentar um treinamento estável, o modelo foi capaz de generalizar razoavelmente bem, sem sinais de \textit{overfitting}.
+
+Além disso, a diminuição estável da função de perda ao longo das 20 épocas de treinamento, como mostra a Figura ~\ref{fig:loss_training} revela que o modelo está convergindo adequadamente, tanto para o conjunto de treinamento quando para o de teste, dada a proximidade entre ambas as curvas.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figures/training/loss_curve.pdf}
+    \caption{Função de perda durante o treinamento.}
+    \label{fig:loss_training}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figures/training/accuracy_curve.pdf}
+    \caption{\textit{Pixelwise Accuracy} durante o treinamento.}
+    \label{fig:accuracy_training}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figures/training/iou_curve.pdf}
+    \caption{IoU durante o treinamento.}
+    \label{fig:iou_training}
+\end{figure}
+
+
+A Tabela~\ref{tab:comparison} apresenta as métricas médias e os desvios padrão obtidos por cada método no conjunto de validação. As Figuras~\ref{fig:histogram_accuracy_grabcut} a~\ref{fig:histogram_iou_unet} ilustram a distribuição das métricas de acurácia por pixel (Pixel Accuracy) e Interseção sobre União (IoU) para o GrabCut e a rede, respectivamente.
+
+\begin{table}[!h]
+\centering
+\caption{Métricas encontradas para os modelos}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Métrica} & \multicolumn{2}{c}{\textbf{GrabCut}} & \multicolumn{2}{c}{\textbf{UNet}} \\
+ & Média & Desvio Padrão & Média & Desvio Padrão \\
+\midrule
+Pixel Accuracy & 0.76 & 0.17 & 0.87 & 0.08 \\
+IoU & 0.58 & 0.23 & 0.74 & 0.14 \\
+\bottomrule
+\end{tabular}
+\label{tab:comparison}
+\end{table}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/classical/histogram_accuracy.pdf}
+    \caption{Pixel Accuracy para o GrabCut.}
+    \label{fig:histogram_accuracy_grabcut}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/unet/histogram_accuracy.pdf}
+    \caption{Pixel Accuracy para a rede.}
+    \label{fig:histogram_accuracy_unet}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/classical/histogram_iou.pdf}
+    \caption{IoU para o GrabCut.}
+    \label{fig:histogram_iou_grabctut}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/unet/histogram_iou.pdf}
+    \caption{IoU para a rede.}
+    \label{fig:histogram_iou_unet}
+\end{figure}
+
+Observando os resultados, é evidente que a rede neural supera o algoritmo clássico nas duas métricas avaliadas. A rede apresenta uma acurácia média por pixel de 87\%, enquanto o GrabCut alcança 76\%. A diferença é ainda mais acentuada na métrica de IoU, onde a rede obtém 74\%, contra 58\% do GrabCut. Além disso, os desvios padrão são menores para a rede, indicando um desempenho mais estável e previsível entre diferentes imagens.
+
+As figuras dos histogramas revelam detalhes adicionais: a distribuição de IoU do GrabCut (\autoref{fig:histogram_iou_grabctut}) mostra uma cauda à esquerda que indica múltiplas predições com desempenho muito baixo. Isso pode sugerir que, em casos mais complexos ou com pouca separabilidade entre objeto e fundo, o GrabCut falha. Já a distribuição da rede apresenta maior simetria e concentração dos valores em torno da média, evidenciando uma maior robustez para esse conjunto de imagens.
+
+Entretanto, o modelo de GrabCut possui implementação mais simples, não necessita de treinamento nem de salvamento do modelo, como ocorre para a rede, mesmo que a rede aqui apresentada tenha arquitetura simples. Dado esse contexto, o GrabCut ainda pode ser uma opção viável, em sistemas mais simples, uma vez que não perde muito nas métricas obtidas em relação à rede.
+
+Finalmente, mostra-se alguns exemplos da tarefa de segmentação, tanto para a rede quanto para o algoritmo Grabcut, demonstrando o funcionamento, ou não, de ambas as abordagens.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{figures/visualize.png}
+    \caption{Exemplo de segmentação realizadas com ambos os modelos}
+    \label{fig:visualization}
+\end{figure}
+
+\section{Conclusão}
+Portanto, podemos concluir que a rede supera, tanto em acurácia de pixel quanto em interseção sobre união, o método clássico na tarefa de segmentação aqui proposta. Essa vitória vem a custo de complexidade adicional de processamento, tempo e espaço. 
+
+Dessa forma, quando o objetivo for maximizar o resultado da segmentação e houver recursos disponíveis, deve-se peferir a rede. Entretanto, o modelo de GrabCut ainda pode ser uma opção extremamente viável em casos de pouco poder computacional e restrição de hardware, como em sistemas embarcados.
+
+
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{bibtex/bibliography}
+
+\end{document}

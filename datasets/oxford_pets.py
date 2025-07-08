@@ -56,7 +56,7 @@ class OxfordPetsSegmentation(Dataset):
             mask, (self.image_size, self.image_size), interpolation=cv2.INTER_NEAREST
         )
 
-        # Convert trimap to binary: pet (1 or 3) → 1.0, background (2) → 0.0
+        # Convert trimap to binary
         mask = (mask != 2).astype(np.float32)
         mask = torch.from_numpy(mask).unsqueeze(0)
 

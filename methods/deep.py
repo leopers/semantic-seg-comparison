@@ -110,7 +110,7 @@ def train_model(model, train_loader, val_loader, device, args):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig("outputs/training/loss_curve.png")
+        plt.savefig("outputs/training/loss_curve.pdf")
 
         # Accuracy
         plt.figure(figsize=(8, 5))
@@ -122,7 +122,7 @@ def train_model(model, train_loader, val_loader, device, args):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig("outputs/training/accuracy_curve.png")
+        plt.savefig("outputs/training/accuracy_curve.pdf")
 
         # IoU
         plt.figure(figsize=(8, 5))
@@ -134,7 +134,7 @@ def train_model(model, train_loader, val_loader, device, args):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig("outputs/training/iou_curve.png")
+        plt.savefig("outputs/training/iou_curve.pdf")
 
 
 def predict(model, val_loader, device, args):

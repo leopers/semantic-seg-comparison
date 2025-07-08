@@ -1,15 +1,20 @@
-import argparse
 from tqdm import tqdm
 import numpy as np
 import cv2
 import os
+import time
 import matplotlib.pyplot as plt
 
 from datasets.oxford_pets import OxfordPetsSegmentation
 from utils.metrics import pixel_accuracy_evaluate, compute_iou_evaluate
 
 
-def classical_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/classical_metrics", index: int = 0, all_: bool = True):
+def classical_metrics(
+    dataset_root: str = "dataset",
+    output_dir: str = "outputs/classical_metrics",
+    index: int = 0,
+    all_: bool = True,
+):
 
     image_files = sorted(
         [f for f in os.listdir("outputs/classical") if f.endswith(".png")],
@@ -23,9 +28,7 @@ def classical_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/
         bin_mask = (img > 0).astype(np.uint8)
         preds_masks.append(bin_mask)
 
-    dataset = OxfordPetsSegmentation(
-        root=dataset_root, split="val", image_size=128
-    )
+    dataset = OxfordPetsSegmentation(root=dataset_root, split="val", image_size=128)
 
     classical_acuracy = []
     classical_iou = []
@@ -57,8 +60,8 @@ def classical_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/
     iou_mean = np.mean(classical_iou)
     iou_std = np.std(classical_iou)
 
-    print(f"Accuracy - Média: {acc_mean:.4f}, Desvio Padrão: {acc_std:.4f}")
-    print(f"IoU - Média: {iou_mean:.4f}, Desvio Padrão: {iou_std:.4f}")
+    print(f"Accuracy - Mean: {acc_mean:.4f}, Std: {acc_std:.4f}")
+    print(f"IoU - Mean: {iou_mean:.4f}, Std: {iou_std:.4f}")
 
     plt.figure()
     plt.hist(classical_acuracy, bins=20, color="blue", edgecolor="black")
@@ -66,7 +69,7 @@ def classical_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/
     plt.xlabel("Accuracy")
     plt.ylabel("Frequency")
     plt.grid(True)
-    plt.savefig(os.path.join(output_dir, "histogram_accuracy.png"))
+    plt.savefig(os.path.join(output_dir, "histogram_accuracy.pdf"))
     plt.close()
 
     # Histogram IoU
@@ -76,11 +79,16 @@ def classical_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/
     plt.xlabel("IoU")
     plt.ylabel("Frequency")
     plt.grid(True)
-    plt.savefig(os.path.join(output_dir, "histogram_iou.png"))
+    plt.savefig(os.path.join(output_dir, "histogram_iou.pdf"))
     plt.close()
 
 
-def unet_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/unet_metrics", index: int = 0, all_: bool = True):
+def unet_metrics(
+    dataset_root: str = "dataset",
+    output_dir: str = "outputs/unet_metrics",
+    index: int = 0,
+    all_: bool = True,
+):
     image_files = sorted(
         [f for f in os.listdir("outputs/unet") if f.endswith(".png")],
         key=lambda x: int(os.path.splitext(x)[0]),
@@ -93,9 +101,7 @@ def unet_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/unet_
         bin_mask = (img > 0).astype(np.uint8)
         preds_masks.append(bin_mask)
 
-    dataset = OxfordPetsSegmentation(
-        root=dataset_root, split="val", image_size=128
-    )
+    dataset = OxfordPetsSegmentation(root=dataset_root, split="val", image_size=128)
 
     unet_acuracy = []
     unet_iou = []
@@ -127,8 +133,8 @@ def unet_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/unet_
     iou_mean = np.mean(unet_iou)
     iou_std = np.std(unet_iou)
 
-    print(f"Accuracy - Média: {acc_mean:.4f}, Desvio Padrão: {acc_std:.4f}")
-    print(f"IoU - Média: {iou_mean:.4f}, Desvio Padrão: {iou_std:.4f}")
+    print(f"Accuracy - Mean {acc_mean:.4f}, Std: {acc_std:.4f}")
+    print(f"IoU - Mean: {iou_mean:.4f}, Std: {iou_std:.4f}")
 
     plt.figure()
     plt.hist(unet_acuracy, bins=20, color="blue", edgecolor="black")
@@ -136,7 +142,7 @@ def unet_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/unet_
     plt.xlabel("Accuracy")
     plt.ylabel("Frequency")
     plt.grid(True)
-    plt.savefig(os.path.join(output_dir, "histogram_accuracy.png"))
+    plt.savefig(os.path.join(output_dir, "histogram_accuracy.pdf"))
     plt.close()
 
     # Histogram IoU
@@ -146,9 +152,9 @@ def unet_metrics(dataset_root: str = "dataset", output_dir: str = "outputs/unet_
     plt.xlabel("IoU")
     plt.ylabel("Frequency")
     plt.grid(True)
-    plt.savefig(os.path.join(output_dir, "histogram_iou.png"))
+    plt.savefig(os.path.join(output_dir, "histogram_iou.pdf"))
     plt.close()
-    pass
+
 
 if __name__ == "__main__":
     classical_metrics()
