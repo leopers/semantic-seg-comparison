@@ -86,7 +86,7 @@ This will show the metrics for each model and save the comparative histograms in
 ### 7. Visual Comparison
 
 ```bash
-python scripts/visualize_examples.py
+python scripts/visualize.py
 ```
 
 Saves the figure in:  
