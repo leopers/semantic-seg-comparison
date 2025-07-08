@@ -80,7 +80,7 @@ python scripts/visualize_examples.py
 ```
 
 Saves the figure in:  
-`outputs/visualize/visualize.png`
+`outputs/visualize/visualize.pdf`
 
 ---
 
