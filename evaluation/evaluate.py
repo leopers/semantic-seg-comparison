@@ -2,7 +2,6 @@ from tqdm import tqdm
 import numpy as np
 import cv2
 import os
-import time
 import matplotlib.pyplot as plt
 
 from datasets.oxford_pets import OxfordPetsSegmentation
