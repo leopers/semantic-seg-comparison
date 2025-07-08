@@ -25,9 +25,19 @@ pip install -r requirements.txt
 
 ---
 
+## Setup
+
+Before running any scripts, set the `PYTHONPATH` to the project root:
+
+```bash
+export PYTHONPATH=$(pwd)
+```
+
+---
+
 ## How to Run
 
-### 1.Train Neural Network
+### 1.Train Neural Network (The dataset will be downloaded automatically)
 
 ```bash
 python methods/deep.py --mode train --plot
